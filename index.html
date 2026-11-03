@@ -10,7 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Quicksand:wght@500;600;700&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=6.0">
+  <link rel="stylesheet" href="css/style.css?v=15.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 
@@ -35,7 +35,7 @@
     </div>
   </div>
 
-  <!-- THANH CÔNG CỤ TỐI GIẢN (Chỉ gồm Ngồi Thiền, Thắp Hương và Bật/Tắt Nhạc Chùa) -->
+  <!-- THANH CÔNG CỤ TỐI GIẢN (Ngồi Thiền, Thắp Hương, Bật/Tắt Nhạc Chùa, Đổi Phông Cảnh) -->
   <nav id="minimal-dock">
     <button id="btn-sit-minimal" class="minimal-btn" title="Ngồi Thiền Kiết Già / Đứng Dậy">
       <span class="btn-icon">🧘</span>
@@ -45,10 +45,14 @@
       <span class="btn-icon">🕯️</span>
       <span class="btn-text">Thắp Hương</span>
     </button>
-      <button id="btn-soundscape-minimal" class="minimal-btn" title="Bật/Tắt Nhạc Nền Chùa Chiền">
-        <span class="btn-icon" id="sound-icon">🎵</span>
-        <span class="btn-text" id="sound-text">Nhạc Chùa: Bật</span>
-      </button>
+    <button id="btn-soundscape-minimal" class="minimal-btn" title="Bật/Tắt Nhạc Nền Chùa Chiền">
+      <span class="btn-icon" id="sound-icon">🎵</span>
+      <span class="btn-text" id="sound-text">Nhạc Chùa: Bật</span>
+    </button>
+    <button id="btn-theme-minimal" class="minimal-btn" title="Đổi Phông Cảnh (Bích Họa / Điện Thờ)">
+      <span class="btn-icon" id="theme-icon">🖼️</span>
+      <span class="btn-text" id="theme-text">Cảnh: Bích Họa</span>
+    </button>
   </nav>
 
   <!-- JOYSTICK ẢO CẢM ỨNG CHO ĐIỆN THOẠI -->
@@ -58,27 +62,23 @@
     </div>
   </div>
 
-  <!-- MODAL: THẮP HƯƠNG DÂNG LỄ TRANG NGHIÊM -->
+  <!-- MODAL: THẮP HƯƠNG DÂNG LỄ TRANG NGHIÊM (Cận cảnh 3D) -->
   <div id="modal-incense" class="modal-overlay hidden">
     <div class="modal-card parchment">
-      <button class="modal-close" id="btn-close-incense">✕</button>
+      <button class="modal-close" id="btn-close-incense" title="Đóng">✕</button>
       <div class="modal-header">
-        <span class="modal-lotus">🪷</span>
-        <h2>Thắp Nén Hương Lòng</h2>
-        <p class="modal-desc">Khói trầm thơm ngát quyện ngàn mây, gửi trọn tâm thành nơi cửa Phật.</p>
-      </div>
-
-      <div class="incense-animation-view">
-        <div class="smoke-preview">
-          <div class="smoke-particle p1"></div>
-          <div class="smoke-particle p2"></div>
-          <div class="smoke-particle p3"></div>
-          <div class="incense-sticks-ui">
-            <span class="stick s1"></span>
-            <span class="stick s2"></span>
-            <span class="stick s3"></span>
-          </div>
+        <div class="modal-lotus-icon">
+          <svg viewBox="0 0 48 48" width="36" height="36" fill="none" stroke="#d48236" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M24 10 C21 17 19 25 24 35 C29 25 27 17 24 10 Z" fill="#fdf0d5" />
+            <path d="M24 18 C16 22 11 29 16 36 C20 37 23 35 24 35" fill="#fdf0d5" fill-opacity="0.6" />
+            <path d="M24 18 C32 22 37 29 32 36 C28 37 25 35 24 35" fill="#fdf0d5" fill-opacity="0.6" />
+            <path d="M24 25 C14 28 8 35 12 39 C16 40 22 37 24 35" fill="#fdf0d5" fill-opacity="0.3" />
+            <path d="M24 25 C34 28 40 35 36 39 C32 40 26 37 24 35" fill="#fdf0d5" fill-opacity="0.3" />
+            <path d="M12 40 C18 42 30 42 36 40" />
+          </svg>
         </div>
+        <h2>Thắp Nén Tâm Hương</h2>
+        <p class="modal-desc">Bé chú tiểu đang nâng 3 nén hương trầm trước án tiền. Hãy gửi gắm ước nguyện và cắm hương vào bát bình hương.</p>
       </div>
 
       <div class="modal-body">
@@ -87,18 +87,15 @@
           placeholder="Ví dụ: Cầu mong gia đình luôn bình an mạnh khỏe, tâm ta luôn phẳng lặng..."></textarea>
 
         <div class="quick-wishes">
-          <span class="wish-chip" data-wish="Cầu chúc gia đạo bình an, cha mẹ mạnh khỏe, vạn sự cát tường.">🏡 Gia Đạo
-            Bình An</span>
-          <span class="wish-chip" data-wish="Cầu cho tâm hồn an yên, bớt lo âu phiền muộn, nhẹ nhàng tĩnh lặng.">🕊️ Tâm
-            Hồn Tĩnh Lặng</span>
-          <span class="wish-chip" data-wish="Cầu công việc thuận lợi, học hành hanh thông, vững vàng ý chí.">📚 Hanh
-            Thông Suôn Sẻ</span>
+          <span class="wish-chip" data-wish="Cầu chúc gia đạo bình an, cha mẹ mạnh khỏe, vạn sự cát tường.">🏡 Gia Đạo Bình An</span>
+          <span class="wish-chip" data-wish="Cầu cho tâm hồn an yên, bớt lo âu phiền muộn, nhẹ nhàng tĩnh lặng.">🕊️ Tâm Hồn Tĩnh Lặng</span>
+          <span class="wish-chip" data-wish="Cầu công việc thuận lợi, học hành hanh thông, vững vàng ý chí.">📚 Hanh Thông Suôn Sẻ</span>
         </div>
       </div>
 
       <div class="modal-footer">
         <button id="btn-submit-prayer" class="btn-primary">
-          <span>Dâng Hương & Cầu Nguyện</span>
+          <span>🕯️ Cắm 3 Nén Hương Vào Bát Bình Hương</span>
           <span class="btn-flare">✨</span>
         </button>
       </div>
@@ -109,11 +106,11 @@
   <div id="toast" class="hidden"></div>
 
   <!-- Core Scripts -->
-  <script src="js/audio.js?v=8.0"></script>
-  <script src="js/mural.js?v=8.0"></script>
-  <script src="js/character.js?v=8.0"></script>
-  <script src="js/world.js?v=8.0"></script>
-  <script src="js/game.js?v=8.0"></script>
+  <script src="js/audio.js?v=15.0"></script>
+  <script src="js/mural.js?v=15.0"></script>
+  <script src="js/character.js?v=15.0"></script>
+  <script src="js/world.js?v=15.0"></script>
+  <script src="js/game.js?v=15.0"></script>
 </body>
 
 </html>

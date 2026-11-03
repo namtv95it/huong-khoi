@@ -2,8 +2,8 @@
  * Main Game Controller: Nhập Vai Bé Chú Tiểu Chibi Dạo Chùa & Tĩnh Tọa
  * - Điều khiển bé chú tiểu đi lại tự do trong chánh điện (WASD / Mũi tên / Joystick cảm ứng)
  * - Tiến lại đệm để ngồi thiền kiết già, đến bàn thờ để dâng hương cầu an
- * - Không gian bích họa Phật giáo Taenghwa và tượng Phật Thích Ca uy nghi
- * - Hoàn toàn không còn chức năng gõ mõ
+ * - Tự động đi đến trước bát hương và chuyển góc cận cảnh điện ảnh khi thắp hương
+ * - Cắm 3 nén hương trầm vào bát bình hương với khói trầm bay nghi ngút
  */
 
 class GameApp {
@@ -11,6 +11,12 @@ class GameApp {
     this.container = document.getElementById('game-container');
     this.fellows = [];
     this.currentZone = null;
+
+    // Trạng thái thắp hương & góc máy cận cảnh
+    this.isAutoWalking = false;
+    this.autoWalkTarget = new THREE.Vector3(0, 0, -5.45);
+    this.cameraMode = 'follow'; // 'follow' | 'cinematic_incense'
+    this.curCamLookAt = new THREE.Vector3(0, 1.2, 0);
 
     this.keys = {
       up: false,
@@ -42,11 +48,17 @@ class GameApp {
       100
     );
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Cấu hình chuẩn màu điện ảnh & tăng cường độ nét sắc sảo
+    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
+
     this.container.appendChild(this.renderer.domElement);
 
     window.addEventListener('resize', () => {
@@ -59,10 +71,9 @@ class GameApp {
 
   initWorldAndCharacters() {
     // 1. Dựng chánh điện và bích họa Taenghwa
-    this.world = new TempleWorld(this.scene);
+    this.world = new TempleWorld(this.scene, this.renderer);
 
-    // 2. NHÂN VẬT CHÍNH: Bé Chú Tiểu Chibi (Người chơi điều khiển)
-    // Khởi đầu đứng ở lối vào giữa các hàng đệm
+    // 2. NHÂN VẬT CHÍNH: Bé Chú Tiểu Chibi
     this.player = new ChibiNun(this.scene, true, "Bé Tiểu", { x: 0, y: 0, z: 2.5 });
     this.player.group.rotation.y = Math.PI; // Hướng mặt về phía tôn tượng Phật
 
@@ -103,9 +114,7 @@ class GameApp {
       const dy = e.clientY - this.prevMousePos.y;
 
       this.camTheta -= dx * 0.005;
-      // Mở rộng tối đa góc quay ngửa lên ngắm trần/tượng Phật và nhìn chúi từ trên cao xuống
       this.camPhi = Math.max(-0.25, Math.min(1.35, this.camPhi + dy * 0.005));
-
       this.prevMousePos = { x: e.clientX, y: e.clientY };
     });
 
@@ -113,7 +122,7 @@ class GameApp {
       this.camDistance = Math.max(2.2, Math.min(12.0, this.camDistance + e.deltaY * 0.005));
     }, { passive: true });
 
-    // Touch vuốt xoay camera trên màn hình cảm ứng
+    // Touch vuốt xoay camera trên điện thoại
     let touchStartX = 0;
     let touchStartY = 0;
     dom.addEventListener('touchstart', (e) => {
@@ -207,25 +216,44 @@ class GameApp {
 
     // Nút thắp hương
     const btnIncense = document.getElementById('btn-incense-minimal');
-    const modalIncense = document.getElementById('modal-incense');
     btnIncense.addEventListener('click', () => this.actionIncense());
 
-    document.getElementById('btn-close-incense').addEventListener('click', () => {
-      modalIncense.classList.add('hidden');
-      this.player.isPraying = false;
-    });
+    // Nút đóng modal thắp hương
+    const btnCloseIncense = document.getElementById('btn-close-incense');
+    if (btnCloseIncense) {
+      btnCloseIncense.addEventListener('click', () => {
+        this.cancelIncense();
+      });
+    }
 
-    document.getElementById('btn-submit-prayer').addEventListener('click', () => {
-      const wish = document.getElementById('prayer-input').value.trim();
-      modalIncense.classList.add('hidden');
-      this.completePrayerOffering(wish);
-    });
+    // Nút cắm hương dâng lời nguyện
+    const btnSubmitPrayer = document.getElementById('btn-submit-prayer');
+    if (btnSubmitPrayer) {
+      btnSubmitPrayer.addEventListener('click', () => {
+        const wish = document.getElementById('prayer-input').value.trim();
+        this.completePrayerOffering(wish);
+      });
+    }
 
     document.querySelectorAll('.wish-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         document.getElementById('prayer-input').value = chip.getAttribute('data-wish');
       });
     });
+
+    // Nút Đổi Phông Cảnh (Bích Họa / Điện Thờ)
+    const btnTheme = document.getElementById('btn-theme-minimal');
+    const themeText = document.getElementById('theme-text');
+    if (btnTheme) {
+      btnTheme.addEventListener('click', () => {
+        const nextTheme = (this.world.currentTheme === 'dien-tho') ? 'tranh-tuong' : 'dien-tho';
+        const label = this.world.setMuralTheme(nextTheme);
+        if (themeText) {
+          themeText.textContent = (nextTheme === 'dien-tho') ? 'Cảnh: Điện Thờ' : 'Cảnh: Bích Họa';
+        }
+        this.showToast('✨ Đã chuyển sang: ' + label);
+      });
+    }
 
     // Nút Bật / Tắt nhạc nền chùa chiền
     const btnSound = document.getElementById('btn-soundscape-minimal');
@@ -304,11 +332,10 @@ class GameApp {
     }, { passive: false });
 
     const endTouch = (e) => {
-      if (touchId === null) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === touchId) {
           touchId = null;
-          stick.style.transform = `translate(-50%, -50%)`;
+          stick.style.transform = 'translate(-50%, -50%)';
           this.keys.up = false;
           this.keys.down = false;
           this.keys.left = false;
@@ -322,13 +349,14 @@ class GameApp {
     window.addEventListener('touchcancel', endTouch);
   }
 
-  updateJoystick(touchX, touchY, maxRadius, stick) {
-    const rect = document.getElementById('joystick-base').getBoundingClientRect();
+  updateJoystick(clientX, clientY, maxRadius, stickEl) {
+    const base = document.getElementById('joystick-base');
+    const rect = base.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
 
-    let dx = touchX - centerX;
-    let dy = touchY - centerY;
+    let dx = clientX - centerX;
+    let dy = clientY - centerY;
     const dist = Math.hypot(dx, dy);
 
     if (dist > maxRadius) {
@@ -336,16 +364,15 @@ class GameApp {
       dy = (dy / dist) * maxRadius;
     }
 
-    stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    stickEl.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 
-    const threshold = 12;
-    this.keys.left = dx < -threshold;
-    this.keys.right = dx > threshold;
-    this.keys.up = dy < -threshold;
-    this.keys.down = dy > threshold;
+    const deadZone = 10;
+    this.keys.left = dx < -deadZone;
+    this.keys.right = dx > deadZone;
+    this.keys.up = dy < -deadZone;
+    this.keys.down = dy > deadZone;
   }
 
-  // TÍNH NĂNG NGỒI THIỀN / ĐỨNG DẬY
   toggleSit() {
     if (this.player.isSitting) {
       this.standUp();
@@ -372,7 +399,6 @@ class GameApp {
       }
     });
 
-    // Đặt bé chú tiểu ngồi kiết già lên mặt đệm
     this.player.group.position.set(targetX, 0.08, targetZ);
     this.player.group.rotation.y = Math.PI; // Hướng mặt về tượng Phật
 
@@ -400,36 +426,85 @@ class GameApp {
     this.showToast('Bé chú tiểu đã đứng dậy tiếp tục dạo bước quanh chùa');
   }
 
-  // TÍNH NĂNG THẮP HƯƠNG DÂNG LỄ
+  // TÍNH NĂNG THẮP HƯƠNG DÂNG LỄ (Đi đến trước bát hương & Cận cảnh cắm hương)
   actionIncense() {
-    this.player.isPraying = true;
-    document.getElementById('modal-incense').classList.remove('hidden');
+    if (this.player.isSitting) {
+      this.standUp();
+    }
+
+    const curPos = this.player.group.position;
+    const distToAltarSpot = Math.hypot(curPos.x - 0, curPos.z - (-5.45));
+
+    if (distToAltarSpot < 0.35) {
+      this.startCloseUpOffering();
+    } else {
+      this.isAutoWalking = true;
+      this.autoWalkTarget.set(0, 0, -5.45);
+      this.showToast('Bé chú tiểu đang bước đến trước bát hương... 🕯️');
+    }
+  }
+
+  startCloseUpOffering() {
+    this.isAutoWalking = false;
+    this.player.group.position.set(0, 0, -5.45);
+    this.player.group.rotation.y = Math.PI; // Hướng mặt trang nghiêm về tượng Phật
+    this.player.setHoldingIncense(true); // Cầm 3 nén hương trầm cháy đỏ trên tay
+    this.cameraMode = 'cinematic_incense';
+
+    const modalIncense = document.getElementById('modal-incense');
+    if (modalIncense) {
+      modalIncense.classList.remove('hidden');
+    }
+    this.showToast('✨ Hãy gửi gắm ước nguyện và cắm hương vào bát bình hương');
+  }
+
+  cancelIncense() {
+    const modalIncense = document.getElementById('modal-incense');
+    if (modalIncense) modalIncense.classList.add('hidden');
+    this.isAutoWalking = false;
+    this.player.setHoldingIncense(false);
+    this.player.isPraying = false;
+    this.cameraMode = 'follow';
+    this.showToast('Đã dừng thắp hương');
   }
 
   completePrayerOffering(wish) {
-    window.zenAudio.playIncenseChime();
-    window.zenAudio.playSingingBowl();
+    const modalIncense = document.getElementById('modal-incense');
+    if (modalIncense) modalIncense.classList.add('hidden');
 
-    this.showToast(wish ? `Đã dâng hương: "${wish}"` : "Đã kính cẩn dâng 3 nén tâm hương an lành 🙏");
+    this.showToast(wish ? 'Đang dâng hương: "' + wish + '"... 🙏' : 'Đang kính cẩn cắm 3 nén hương vào bát... 🙏');
 
-    setTimeout(() => {
-      this.player.isPraying = false;
-    }, 2800);
+    // Kích hoạt hoạt ảnh: vươn tay cắm hương -> vái 3 lần -> lùi lại 2 bước (không nhảy)
+    this.player.triggerPlantIncense(
+      () => {
+        // Nén nhang cắm thẳng đứng vào bát hương
+        this.world.plantIncenseInBurner();
+        window.zenAudio.playIncenseChime();
+        window.zenAudio.playSingingBowl();
+        this.showToast('✨ Đã cắm 3 nén tâm hương an lành vào bát bình hương 🙏');
+      },
+      () => {
+        // Sau khi đã vái 3 lần và bước lùi lại trang nghiêm
+        this.showToast('Bé chú tiểu đã kính cẩn vái 3 lần tạ lễ và lùi lại an nhiên 🙏');
+        setTimeout(() => {
+          this.cameraMode = 'follow';
+          this.player.isPraying = false;
+          this.player.setHoldingIncense(false);
+        }, 1400);
+      }
+    );
   }
 
   // Kiểm tra vị trí để hiện bảng gợi ý tương tác
   checkProximity() {
-    if (this.player.isSitting) {
+    if (this.player.isSitting || this.isAutoWalking || this.cameraMode === 'cinematic_incense') {
       this.promptBox.classList.add('hidden');
       return;
     }
 
     const pos = this.player.group.position;
-
-    // Gần bàn hương trước bàn thờ (x: 0, z: -6.6)
     const distToAltar = Math.hypot(pos.x, pos.z - (-6.6));
 
-    // Gần bất kỳ đệm thiền nào
     let nearCushion = false;
     this.world.cushionPositions.forEach(c => {
       if (Math.hypot(pos.x - c.x, pos.z - c.z) < 1.35) {
@@ -457,6 +532,11 @@ class GameApp {
 
   updateNameTagPosition() {
     if (!this.nameTag || !this.player) return;
+
+    if (this.cameraMode === 'cinematic_incense') {
+      this.nameTag.style.display = 'none';
+      return;
+    }
 
     const headWorldPos = new THREE.Vector3();
     this.player.headMesh.getWorldPosition(headWorldPos);
@@ -491,61 +571,92 @@ class GameApp {
     const delta = Math.min(this.clock.getDelta(), 0.1);
 
     // Xử lý di chuyển
-    let moveX = 0;
-    let moveZ = 0;
-
-    if (this.keys.up) moveZ -= 1;
-    if (this.keys.down) moveZ += 1;
-    if (this.keys.left) moveX -= 1;
-    if (this.keys.right) moveX += 1;
-
-    const isMoving = (moveX !== 0 || moveZ !== 0);
+    let isMoving = false;
     let targetAngle = null;
 
-    if (isMoving) {
-      if (this.player.isSitting) {
-        this.standUp();
+    if (this.isAutoWalking) {
+      const curPos = this.player.group.position;
+      const dx = this.autoWalkTarget.x - curPos.x;
+      const dz = this.autoWalkTarget.z - curPos.z;
+      const dist = Math.hypot(dx, dz);
+
+      if (dist > 0.08) {
+        const speed = this.player.speed * 0.95;
+        curPos.x += (dx / dist) * speed * delta;
+        curPos.z += (dz / dist) * speed * delta;
+        targetAngle = Math.atan2(dx, dz);
+        isMoving = true;
+      } else {
+        this.startCloseUpOffering();
+      }
+    } else {
+      let moveX = 0;
+      let moveZ = 0;
+
+      if (!this.player.isPlanting && !this.player.isHoldingIncense) {
+        if (this.keys.up) moveZ -= 1;
+        if (this.keys.down) moveZ += 1;
+        if (this.keys.left) moveX -= 1;
+        if (this.keys.right) moveX += 1;
       }
 
-      const moveLen = Math.hypot(moveX, moveZ);
-      moveX /= moveLen;
-      moveZ /= moveLen;
+      isMoving = (moveX !== 0 || moveZ !== 0);
 
-      // Xoay hướng di chuyển theo góc camera
-      const camAngle = this.camTheta;
-      const worldMoveX = moveX * Math.cos(camAngle) + moveZ * Math.sin(camAngle);
-      const worldMoveZ = -moveX * Math.sin(camAngle) + moveZ * Math.cos(camAngle);
+      if (isMoving) {
+        if (this.player.isSitting) {
+          this.standUp();
+        }
 
-      const newX = this.player.group.position.x + worldMoveX * this.player.speed * delta;
-      const newZ = this.player.group.position.z + worldMoveZ * this.player.speed * delta;
+        const moveLen = Math.hypot(moveX, moveZ);
+        moveX /= moveLen;
+        moveZ /= moveLen;
 
-      // Giới hạn trong khuôn viên chánh điện
-      this.player.group.position.x = Math.max(-10, Math.min(10, newX));
-      this.player.group.position.z = Math.max(-6.5, Math.min(8.5, newZ));
+        const camAngle = this.camTheta;
+        const worldMoveX = moveX * Math.cos(camAngle) + moveZ * Math.sin(camAngle);
+        const worldMoveZ = -moveX * Math.sin(camAngle) + moveZ * Math.cos(camAngle);
 
-      targetAngle = Math.atan2(worldMoveX, worldMoveZ);
+        const newX = this.player.group.position.x + worldMoveX * this.player.speed * delta;
+        const newZ = this.player.group.position.z + worldMoveZ * this.player.speed * delta;
+
+        this.player.group.position.x = Math.max(-10, Math.min(10, newX));
+        this.player.group.position.z = Math.max(-6.5, Math.min(8.5, newZ));
+
+        targetAngle = Math.atan2(worldMoveX, worldMoveZ);
+      }
     }
 
     // Cập nhật hoạt ảnh nhân vật
     this.player.update(delta, isMoving, targetAngle);
     this.fellows.forEach(f => f.update(delta));
-    this.world.update(delta);
+    this.world.update(delta, this.camera);
     this.checkProximity();
 
-    // Camera bám theo nhân vật mượt mà
-    const pPos = this.player.group.position;
-    this.camTarget.x += (pPos.x - this.camTarget.x) * (delta * 5.0);
-    this.camTarget.y += (pPos.y + 1.1 - this.camTarget.y) * (delta * 5.0);
-    this.camTarget.z += (pPos.z - this.camTarget.z) * (delta * 5.0);
+    // Camera bám theo nhân vật hoặc chuyển sang cận cảnh điện ảnh
+    if (this.cameraMode === 'cinematic_incense') {
+      const targetCamPos = new THREE.Vector3(1.40, 1.40, -4.60);
+      const targetLookAt = new THREE.Vector3(-0.08, 1.05, -6.30);
 
-    const camX = this.camTarget.x + this.camDistance * Math.sin(this.camTheta) * Math.cos(this.camPhi);
-    const camY = this.camTarget.y + this.camDistance * Math.sin(this.camPhi);
-    const camZ = this.camTarget.z + this.camDistance * Math.cos(this.camTheta) * Math.cos(this.camPhi);
+      this.camera.position.lerp(targetCamPos, delta * 3.2);
+      if (!this.curCamLookAt) this.curCamLookAt = this.camTarget.clone();
+      this.curCamLookAt.lerp(targetLookAt, delta * 3.2);
+      this.camera.lookAt(this.curCamLookAt);
+    } else {
+      const pPos = this.player.group.position;
+      this.camTarget.x += (pPos.x - this.camTarget.x) * (delta * 5.0);
+      this.camTarget.y += (pPos.y + 1.1 - this.camTarget.y) * (delta * 5.0);
+      this.camTarget.z += (pPos.z - this.camTarget.z) * (delta * 5.0);
 
-    // Đảm bảo camera không bị thụt xuống dưới mặt sàn
-    const clampedCamY = Math.max(0.35, camY);
-    this.camera.position.set(camX, clampedCamY, camZ);
-    this.camera.lookAt(this.camTarget);
+      const camX = this.camTarget.x + this.camDistance * Math.sin(this.camTheta) * Math.cos(this.camPhi);
+      const camY = this.camTarget.y + this.camDistance * Math.sin(this.camPhi);
+      const camZ = this.camTarget.z + this.camDistance * Math.cos(this.camTheta) * Math.cos(this.camPhi);
+
+      const clampedCamY = Math.max(0.35, camY);
+      const targetCamPos = new THREE.Vector3(camX, clampedCamY, camZ);
+      this.camera.position.lerp(targetCamPos, delta * 4.5);
+      if (!this.curCamLookAt) this.curCamLookAt = this.camTarget.clone();
+      this.curCamLookAt.lerp(this.camTarget, delta * 5.0);
+      this.camera.lookAt(this.curCamLookAt);
+    }
 
     this.updateNameTagPosition();
     this.renderer.render(this.scene, this.camera);
