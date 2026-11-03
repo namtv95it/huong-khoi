@@ -1,0 +1,466 @@
+:root {
+  --primary-gold: #e2a647;
+  --warm-amber: #d48236;
+  --deep-red: #9e2a2b;
+  --bg-parchment: #faf6ee;
+  --glass-bg: rgba(28, 20, 16, 0.75);
+  --glass-border: rgba(226, 166, 71, 0.3);
+  --text-dark: #3a2e2b;
+  --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Quicksand', 'Noto Sans KR', sans-serif;
+  background-color: #120c09;
+}
+
+#game-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* NHÃN TÊN NỔI TRÊN ĐẦU BÉ CHÚ TIỂU (Y hệt ảnh mẫu: [나] Bé Tiểu) */
+#player-nametag {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ece8dc;
+  padding: 4px 14px 4px 6px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, -100%);
+  z-index: 20;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.2s ease;
+}
+
+#player-nametag:hover {
+  transform: translate(-50%, -105%) scale(1.05);
+}
+
+.nametag-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #607d67; /* Xanh rêu truyền thống */
+  color: #ffffff;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nametag-text {
+  font-family: 'Noto Sans KR', 'Quicksand', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2b241f;
+  letter-spacing: 0.2px;
+}
+
+/* BẢNG GỢI Ý TƯƠNG TÁC (Ở sát mép dưới, không che cảnh) */
+#interact-prompt {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#interact-prompt.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 15px);
+}
+
+.prompt-card {
+  background: rgba(30, 22, 17, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid var(--primary-gold);
+  border-radius: 30px;
+  padding: 8px 24px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45);
+}
+
+.prompt-icon {
+  font-size: 1.3rem;
+}
+
+.prompt-action {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #ffdfa3;
+  line-height: 1.2;
+}
+
+.prompt-key {
+  font-size: 0.75rem;
+  color: #e0d0b0;
+  margin-top: 2px;
+}
+
+/* THANH ĐIỀU KHIỂN TỐI GIẢN (Minimalist Zen Dock) */
+#minimal-dock {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 20;
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 6px 14px;
+  border-radius: 30px;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+  max-width: 95vw;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.minimal-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
+  color: #f5f0e6;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.minimal-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.minimal-btn.active {
+  background: linear-gradient(135deg, #d48236 0%, #b25816 100%);
+  color: #ffffff;
+  border-color: #e2a647;
+}
+
+.minimal-btn.icon-only {
+  padding: 8px 12px;
+  font-size: 1rem;
+}
+
+/* MODAL THẮP HƯƠNG */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 10, 8, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modal-card.parchment {
+  position: relative;
+  background: radial-gradient(circle at center, #fffdf8 0%, #faf3e5 100%);
+  border: 2px solid #e4caa4;
+  border-radius: 24px;
+  padding: 32px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.06);
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #7d6b65;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.modal-lotus {
+  font-size: 2.2rem;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.modal-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  color: var(--deep-red);
+  margin-bottom: 4px;
+}
+
+.modal-desc {
+  font-size: 0.85rem;
+  color: #7d6b65;
+  line-height: 1.5;
+}
+
+.incense-animation-view {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 20px;
+}
+
+.smoke-preview {
+  position: relative;
+  width: 80px;
+  height: 90px;
+}
+
+.incense-sticks-ui {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+
+.stick {
+  width: 4px;
+  height: 50px;
+  background: #8b3a1e;
+  border-radius: 2px;
+  position: relative;
+}
+
+.stick::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -1px;
+  width: 6px;
+  height: 6px;
+  background: #ff5e36;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #ff3b00;
+  animation: emberGlow 1.2s infinite alternate;
+}
+
+.smoke-particle {
+  position: absolute;
+  bottom: 50px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(240, 240, 240, 0.8) 0%, rgba(200, 200, 200, 0) 70%);
+  animation: smokeWaft 3s infinite ease-out;
+}
+
+.smoke-particle.p1 { left: 24px; animation-delay: 0s; }
+.smoke-particle.p2 { left: 34px; animation-delay: 1s; }
+.smoke-particle.p3 { left: 44px; animation-delay: 2s; }
+
+.modal-body label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+#prayer-input {
+  width: 100%;
+  height: 80px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #dcc29f;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: none;
+  outline: none;
+}
+
+.quick-wishes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.wish-chip {
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  background: #f4ecdc;
+  border-radius: 16px;
+  cursor: pointer;
+  border: 1px solid #e2d2bb;
+  transition: all 0.2s ease;
+}
+
+.wish-chip:hover {
+  background: var(--warm-amber);
+  color: #fff;
+}
+
+.modal-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 28px;
+  border-radius: 30px;
+  border: none;
+  background: linear-gradient(135deg, #d48236 0%, #9e2a2b 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(158, 42, 43, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(158, 42, 43, 0.45);
+}
+
+#toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(28, 20, 16, 0.92);
+  color: #f7eedc;
+  padding: 8px 20px;
+  border-radius: 24px;
+  font-size: 0.85rem;
+  border: 1px solid var(--primary-gold);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  z-index: 120;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#toast.hidden {
+  opacity: 0;
+  transform: translate(-50%, 15px);
+}
+
+/* Virtual Joystick for Mobile */
+#virtual-joystick-container {
+  display: none;
+  position: absolute;
+  bottom: 90px;
+  left: 24px;
+  width: 110px;
+  height: 110px;
+  z-index: 30;
+  touch-action: none;
+}
+
+#joystick-base {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+}
+
+#joystick-stick {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffebbb 0%, #d48236 100%);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+@keyframes modalPop {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes emberGlow {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.7); }
+}
+
+@keyframes smokeWaft {
+  0% { opacity: 0.8; transform: translateY(0) scale(1); }
+  50% { opacity: 0.4; transform: translateY(-35px) scale(2.2); }
+  100% { opacity: 0; transform: translateY(-70px) scale(3.5); }
+}
+
+@media (max-width: 768px) {
+  #virtual-joystick-container {
+    display: block;
+  }
+}
